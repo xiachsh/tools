@@ -18,7 +18,7 @@ function setup_ssh_connection()
 
 function ssh_cmd()
 {
-	cmd=$1
+	cmd=$*
 	if [[ -z $cmd ]];then
 		return 
 	fi
@@ -87,8 +87,9 @@ function update_hdfs_default()
 	ssh_cmd mkdir -p /hadoop/dfs/name
 	ssh_cmd mkdir -p /hadoop/dfs/data	
 
-	sed -i '/<name>dfs.datanode.data.dir<\/name>/,+3 s#<value>file://${hadoop.tmp.dir}/dfs/data</value># <value>file://hadoop/dfs/data</value>#' /opt/apache/hadoop-2.7.2/etc/hadoop/hdfs-default.xml
-	sed -i '/<name>dfs.namenode.name.dir<\/name>/,+3 s#<value>file://${hadoop.tmp.dir}/dfs/name</value># <value>file://hadoop/dfs/name</value>#' /opt/apache/hadoop-2.7.2/etc/hadoop/hdfs-default.xml
+	sed -i '/<name>dfs.namenode.rpc-address<\/name>/,+2 s#<value>.*</value>#<value>xiachsh21:8020</value>#' /opt/apache/hadoop-2.7.2/etc/hadoop/hdfs-default.xml
+	sed -i '/<name>dfs.datanode.data.dir<\/name>/,+3 s#<value>file://${hadoop.tmp.dir}/dfs/data</value># <value>/hadoop/dfs/data</value>#' /opt/apache/hadoop-2.7.2/etc/hadoop/hdfs-default.xml
+	sed -i '/<name>dfs.namenode.name.dir<\/name>/,+3 s#<value>file://${hadoop.tmp.dir}/dfs/name</value># <value>/hadoop/dfs/name</value>#' /opt/apache/hadoop-2.7.2/etc/hadoop/hdfs-default.xml
 	sed -i '/<name>dfs.replication<\/name>/,+3 s#<value>3</value>#<value>1</value>#' /opt/apache/hadoop-2.7.2/etc/hadoop/hdfs-default.xml
 }
 
@@ -106,6 +107,9 @@ setup_ssh_connection
 
 if [ -d package/binary ];then
 	rm -rf package/binary/*
+fi
+if [ -d package/src ];then
+	rm -rf package/src/*
 fi
 mkdir -p  package/binary
 mkdir -p  package/src
@@ -126,6 +130,7 @@ wget http://www-us.apache.org/dist/hbase/stable/hbase-1.1.4-src.tar.gz
 cd -
 
 scp_files "package/binary" "/tmp"
+remove_path $TARGET_PATH
 
 BINARY_TARBALL_LIST=$(find package/binary | sed -e "s#package/binary##")
 for binary_tarball in $BINARY_TARBALL_LIST;do
