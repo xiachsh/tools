@@ -57,7 +57,7 @@ function remote_untar()
 }
 function remove_path()
 {
-	$dir=$1
+	dir=$1
 	for node in $NODE_LIST;do
 		ssh $node rm -rf $dir
 	done
@@ -98,7 +98,7 @@ function update_hdfs_default()
 
 function update_conf_file()
 {
-	scp_files 	/opt/apache/hadoop-2.7.2/etc/hadoop/
+	scp_files 	/opt/apache/hadoop-2.7.2/etc/hadoop/ /opt/apache/hadoop-2.7.2/etc/hadoop/
 }
 
 
@@ -144,3 +144,4 @@ update_hadoop_env
 update_core_default
 update_hdfs_default
 
+update_conf_file
