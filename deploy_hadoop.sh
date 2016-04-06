@@ -2,9 +2,10 @@
 
 NODE_LIST="xiachsh21 xiachsh22 xiachsh23 xiachsh24 xiachsh25"
 SLAVES_LIST="xiachsh22 xiachsh23 xiachsh24 xiachsh25"
-PASSWORD="Letmein123"
+DEFAULT_PASSWORD="Letmein123"
 TARGET_PATH="/opt/apache"
 MASTER="xiachsh21"
+JAVA_HOME=""
 
 
 function setup_ssh_connection()
@@ -12,7 +13,7 @@ function setup_ssh_connection()
 	rm -rf ~/.ssh
 	ssh-keygen -t rsa -q -N "" -f ~/.ssh/id_rsa
 	for node in $NODE_LIST;do
-		expect -f ./setup_ssh $node $PASSWORD
+		expect -f ./setup_ssh $node $DEFAULT_PASSWORD
 	done
 }
 
@@ -73,13 +74,13 @@ function update_master_slave_list()
 }
 function update_hadoop_env()
 {
-	sed -i 's#export JAVA_HOME=${JAVA_HOME}#export JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64#' /opt/apache/hadoop-2.7.2/etc/hadoop/hadoop-env.sh	
+	sed -i 's#export JAVA_HOME=${JAVA_HOME}#export JAVA_HOME='$JAVA_HOME'#' /opt/apache/hadoop-2.7.2/etc/hadoop/hadoop-env.sh	
 	sed -i 's#export HADOOP_CONF_DIR.*#export HADOOP_CONF_DIR=/opt/apache/hadoop-2.7.2/etc/hadoop/#' /opt/apache/hadoop-2.7.2/etc/hadoop/hadoop-env.sh
 }
 
 function update_core_default()
 {
-	 sed -i '/fs.defaultFS/,+3 s#<value>file:///</value>#<value>hdfs://xiachs21/</value>#' /opt/apache/hadoop-2.7.2/etc/hadoop/core-default.xml 
+	 sed -i '/fs.defaultFS/,+3 s#<value>file:///</value>#<value>hdfs://'$MASTER'/</value>#' /opt/apache/hadoop-2.7.2/etc/hadoop/core-default.xml 
 }
 
 function update_hdfs_default()
@@ -87,14 +88,11 @@ function update_hdfs_default()
 	ssh_cmd mkdir -p /hadoop/dfs/name
 	ssh_cmd mkdir -p /hadoop/dfs/data	
 
-	sed -i '/<name>dfs.namenode.rpc-address<\/name>/,+2 s#<value>.*</value>#<value>xiachsh21:8020</value>#' /opt/apache/hadoop-2.7.2/etc/hadoop/hdfs-default.xml
+	sed -i '/<name>dfs.namenode.rpc-address<\/name>/,+2 s#<value>.*</value>#<value>'$MASTER':8020</value>#' /opt/apache/hadoop-2.7.2/etc/hadoop/hdfs-default.xml
 	sed -i '/<name>dfs.datanode.data.dir<\/name>/,+3 s#<value>file://${hadoop.tmp.dir}/dfs/data</value># <value>/hadoop/dfs/data</value>#' /opt/apache/hadoop-2.7.2/etc/hadoop/hdfs-default.xml
 	sed -i '/<name>dfs.namenode.name.dir<\/name>/,+3 s#<value>file://${hadoop.tmp.dir}/dfs/name</value># <value>/hadoop/dfs/name</value>#' /opt/apache/hadoop-2.7.2/etc/hadoop/hdfs-default.xml
 	sed -i '/<name>dfs.replication<\/name>/,+3 s#<value>3</value>#<value>1</value>#' /opt/apache/hadoop-2.7.2/etc/hadoop/hdfs-default.xml
 }
-
-
-
 
 
 function update_conf_file()
@@ -102,7 +100,50 @@ function update_conf_file()
 	scp_files 	/opt/apache/hadoop-2.7.2/etc/hadoop/ /opt/apache/hadoop-2.7.2/etc/hadoop/
 }
 
+function usage()
+{
+	echo "$0 Usage:" 
+	echo " -j JAVA_HOME"
+	echo " -m MasterHost"
+	echo " -s slaveHosts seperated by , "
+	echo " -p Password for nodes"
+	echo " -n path for namenode"
+	echo " -d path for datanode"
+	exit 1
+}
 
+while getopts "j:m:s:p:n:d:" arg;do
+	case $arg in
+		j)
+			JAVA_HOME=$OPTARG
+			;;
+		m)
+			MASTER=$OPTARG
+			;;
+		s)
+			SLAVES=$OPTARG
+			SLAVES_LIST=$(echo $SLAVES | tr "," " ")
+			;;
+		n)
+			NN_PATH=$OPTARG
+			;;
+		d)	
+			DN_PATH=$OPTARG
+			;;
+		p)	
+			DEFAULT_PASSWORD=$OPTARG	
+			;;
+		*)
+			usage
+			;;
+	esac
+done
+
+if [ -z $JAVA_HOME ] ||  [ ! -f $JAVA_HOME/bin/java ];then
+	echo "wrong java_home"
+	usage
+fi
+NODE_LIST=$(echo $MASTER $SLAVES_LIST)
 setup_ssh_connection
 
 if [ -d package/binary ];then
