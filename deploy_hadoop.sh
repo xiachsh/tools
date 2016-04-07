@@ -95,9 +95,47 @@ function update_hdfs_default()
 }
 
 
+function initial_spark_conf()
+{
+	conf_file_list=$(ls /opt/apache/spark-1.6.1-bin-hadoop2.6/conf/ | sed 's#.template##')
+	for file in $conf_file_list;do
+		mv /opt/apache/spark-1.6.1-bin-hadoop2.6/conf/${file}.template /opt/apache/spark-1.6.1-bin-hadoop2.6/conf/${file}
+	done 
+}
+
+function update_spark_conf()
+{
+	rm -rf /opt/apache/spark-1.6.1-bin-hadoop2.6/conf/slaves
+	for slave in $SLAVES_LIST;do
+		echo $slave >> /opt/apache/spark-1.6.1-bin-hadoop2.6/conf/slaves
+	done 
+
+	echo "JAVA_HOME=$JAVA_HOME" >> /opt/apache/spark-1.6.1-bin-hadoop2.6/conf/spark-env.sh
+	echo "SPARK_MASTER_IP=$MASTER" >> /opt/apache/spark-1.6.1-bin-hadoop2.6/conf/spark-env.sh
+	echo "SPARK_WORKER_CORES=2" >> /opt/apache/spark-1.6.1-bin-hadoop2.6/conf/spark-env.sh
+	echo "SPARK_WORKER_MEMORY=2g" >> /opt/apache/spark-1.6.1-bin-hadoop2.6/conf/spark-env.sh
+	echo "SPARK_CONF_DIR=/opt/apache/spark-1.6.1-bin-hadoop2.6/conf/" >> /opt/apache/spark-1.6.1-bin-hadoop2.6/conf/spark-env.sh	
+	echo "HADOOP_CONF_DIR=/opt/apache/hadoop-2.7.2/etc/hadoop/" >> /opt/apache/spark-1.6.1-bin-hadoop2.6/conf/spark-env.sh
+
+	/opt/apache/hadoop-2.7.2/bin/hadoop fs -mkdir -p hdfs://$MASTER/spark_event
+	cat >>/opt/apache/spark-1.6.1-bin-hadoop2.6/conf/spark-default.xml <<EOF_SPARK_DEFAULT
+
+spark.master                     spark://$MASTER:7077
+spark.eventLog.enabled           true
+spark.eventLog.dir               hdfs://$MASTER/spark_event
+spark.serializer                 org.apache.spark.serializer.KryoSerializer
+spark.driver.memory              2g
+spark.history.provider 		 org.apache.spark.deploy.history.FsHistoryProvide
+spark.history.fs.logDirectory	 hdfs://$MASTER/spark_event
+
+EOF_SPARK_DEFAULT
+
+}
+
 function update_conf_file()
 {
 	scp_files 	/opt/apache/hadoop-2.7.2/etc/hadoop/ /opt/apache/hadoop-2.7.2/etc/hadoop/
+	scp_files 	/opt/apache/spark-1.6.1-bin-hadoop2.6/conf/ /opt/apache/spark-1.6.1-bin-hadoop2.6/conf/
 }
 
 function usage()
@@ -189,5 +227,6 @@ update_master_slave_list
 update_hadoop_env
 update_core_default
 update_hdfs_default
-
+initial_spark_conf
+update_spark_conf
 update_conf_file
