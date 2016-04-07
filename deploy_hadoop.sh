@@ -118,14 +118,14 @@ function update_spark_conf()
 	echo "HADOOP_CONF_DIR=/opt/apache/hadoop-2.7.2/etc/hadoop/" >> /opt/apache/spark-1.6.1-bin-hadoop2.6/conf/spark-env.sh
 
 	/opt/apache/hadoop-2.7.2/bin/hadoop fs -mkdir -p hdfs://$MASTER/spark_event
-	cat >>/opt/apache/spark-1.6.1-bin-hadoop2.6/conf/spark-default.xml <<EOF_SPARK_DEFAULT
+	cat >>/opt/apache/spark-1.6.1-bin-hadoop2.6/conf/spark-defaults.conf <<EOF_SPARK_DEFAULT
 
 spark.master                     spark://$MASTER:7077
 spark.eventLog.enabled           true
 spark.eventLog.dir               hdfs://$MASTER/spark_event
 spark.serializer                 org.apache.spark.serializer.KryoSerializer
 spark.driver.memory              2g
-spark.history.provider 		 org.apache.spark.deploy.history.FsHistoryProvide
+spark.history.provider 		 org.apache.spark.deploy.history.FsHistoryProvider
 spark.history.fs.logDirectory	 hdfs://$MASTER/spark_event
 
 EOF_SPARK_DEFAULT
